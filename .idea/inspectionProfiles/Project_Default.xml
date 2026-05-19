@@ -1,0 +1,26 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="blinker" />
+          <option value="click" />
+          <option value="colorama" />
+          <option value="Flask" />
+          <option value="itsdangerous" />
+          <option value="Jinja2" />
+          <option value="MarkupSafe" />
+          <option value="Werkzeug" />
+          <option value="annotated-types" />
+          <option value="flask_pydantic_spec" />
+          <option value="inflection" />
+          <option value="pydantic" />
+          <option value="pydantic_core" />
+          <option value="typing-inspection" />
+          <option value="typing_extensions" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
