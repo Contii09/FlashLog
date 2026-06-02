@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, func, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, func, ForeignKey, select
 from sqlalchemy.orm import sessionmaker, declarative_base, scoped_session, Session
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -6,9 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 engine = create_engine('mysql+pymysql://root:senaisp@localhost:3306/flashlog')
 Base = declarative_base()
 
-
 SessionLocal = scoped_session(sessionmaker(bind=engine))
-Base.query = SessionLocal.query_property()
 
 
 class Usuario(Base):
@@ -34,8 +32,6 @@ class Usuario(Base):
             "criado_em": self.criado_em,
         }
         return dados
-
-
 
 class Encomenda(Base):
     __tablename__ = 'encomendas'
@@ -93,7 +89,6 @@ class CentroDeTranporcacao(Base):
         return dados
 
 
-
 class Cliente(Base):
     __tablename__ = 'clientes'
 
@@ -126,43 +121,94 @@ class Cliente(Base):
 
 
 class BuscarEncomenda:
-    def por_id(self, encomenda_id: int):
+    def por_codigo(self, codigo_rastreio: str):
         db: Session = SessionLocal()
         try:
-            encomenda = db.query(Encomenda).filter(Encomenda.id == encomenda_id).first()
+            consulta = select(Encomenda).filter(Encomenda.codigo_rastreio == codigo_rastreio)
+            encomenda = db.scalar(consulta)
+
             if encomenda:
                 return encomenda.serialize()
             return None
         finally:
             db.close()
 
-    def por_codigo(self, codigo_rastreio: str):
+
+class BuscarCentroDeTransporte:
+    def por_id(self, centro_id: int):
         db: Session = SessionLocal()
         try:
-            encomenda = db.query(Encomenda).filter(Encomenda.codigo_rastreio == codigo_rastreio).first()
-            if encomenda:
-                return encomenda.serialize()
+            consulta = select(CentroDeTranporcacao).filter(CentroDeTranporcacao.id == centro_id)
+            centro = db.scalar(consulta)
+
+            if centro:
+                return centro.serialize()
             return None
         finally:
             db.close()
+
+
+class BuscarCliente:
+    def por_id(self, cliente_id: int):
+        db: Session = SessionLocal()
+        try:
+            consulta = select(Cliente).filter(Cliente.id == cliente_id)
+            cliente = db.scalar(consulta)
+
+            if cliente:
+                return cliente.serialize()
+            return None
+        finally:
+            db.close()
+
+
+class BuscarUsuario:
+    def por_id(self, id):
+        db: Session = SessionLocal()
+        try:
+            consulta = select(Usuario).filter(Usuario.id == id)
+            usuario  = db.scalar(consulta)
+
+            if usuario:
+                return usuario.serialize()
+            return None
+
+        finally:
+            db.close()
+
+
+class BuscarEntregador:
+    def por_id(self,id):
+
+        db: Session = SessionLocal()
+        try:
+            consulta = select(Entregador).filter(Entregador.id == id)
+            entregador = db.scalar(consulta)
+            if entregador:
+                return entregador.serialize()
+            return None
+        finally:
+            db.close()
+
+
 
 
 class ListarEncomendas:
     def todas(self):
         db: Session = SessionLocal()
         try:
-            encomendas = db.query(Encomenda).all()
+            consulta = select(Encomenda)
+            encomendas = db.scalars(consulta).all()
+
             return [encomenda.serialize() for encomenda in encomendas]
         finally:
             db.close()
 
 
-
-
 class Movimentacao(Base):
     __tablename__ = 'movimentacoes'
     id = Column(Integer, primary_key=True)
-    status = Column(String(100), nullable=False) #Em trânsito/Entregue
+    situacao = Column(String(100), nullable=False) #Em trânsito/Entregue
     localizacao = Column(String(255), nullable=False)
     data_hora = Column(DateTime, nullable=False, server_default=func.now())
 
@@ -173,7 +219,7 @@ class Movimentacao(Base):
     def serialize(self):
         return {
             "id": self.id,
-            "status": self.status,
+            "situacao": self.situacao,
             "localizacao": self.localizacao,
             "data_hora": self.data_hora,
             "encomenda_id": self.encomenda_id,
@@ -181,4 +227,4 @@ class Movimentacao(Base):
             "usuario_id": self.usuario_id
         }
 
-Base.metadata.create_all(engine)  #Cria as tabelas
+Base.metadata.create_all(engine) #Cria as tabelas
