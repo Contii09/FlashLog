@@ -10,40 +10,40 @@ from models import Usuario, Encomenda, Entregador, CentroDeTranporcacao, Cliente
 @app.route('/cadastro_encomendas', methods=['POST'])
 def cadastro_encomendas():
     """
-    **API para Cadastro de Encomendas**
-    ### Endpoint:
-    POST /cadastro_encomendas
+        **API para Cadastro de Encomendas**
+        ### Endpoint:
+        POST /cadastro_encomendas
 
-    ### Parametros de Entrada (JSON):
-    ```json
-    {
-        "nome": "string (obrigatorio) - Nome ou descricao do item",
-        "fragilidade": "string (obrigatorio) - Nivel de fragilidade (Ex: Alta, Baixa)",
-        "tipo": "string (obrigatorio) - Categoria do produto"
-    }
-    ```
-
-    ### Respostas (JSON):
-    * **201 Created:** Encomenda registrada com sucesso (com codigo gerado automaticamente).
-      ```json
-      {
-          "msg": "Encomenda criada com sucesso",
-          "encomenda_id": 1,
-          "codigo_rastreio": "FLASH123456"
-      }
-      ```
-    * **400 Bad Request:** Ausencia de campos obrigatorios.
-      ```json
-      {
-          "msg": "Os campos nome, fragilidade e tipo sao obrigatorios"
-      }
-      ```
-    * **500 Internal Server Error:** Falha operacional no banco de dados.
-      ```json
-      {
-          "msg": "Erro ao registrar encomenda.: [Descricao do Erro]"
+        ### Parametros de Entrada (JSON):
+        ```json
+        {
+            "nome": "string (obrigatorio) - Nome ou descricao do item",
+            "fragilidade": "string (obrigatorio) - Nivel de fragilidade (Ex: Alta, Baixa)",
+            "tipo": "string (obrigatorio) - Categoria do produto"
         }
         ```
+
+        ### Respostas (JSON):
+        * **201 Created:** Encomenda registrada com sucesso (com codigo gerado automaticamente).
+          ```json
+          {
+              "msg": "Encomenda criada com sucesso",
+              "encomenda_id": 1,
+              "codigo_rastreio": "FLASH123456"
+          }
+          ```
+        * **400 Bad Request:** Ausencia de campos obrigatorios.
+          ```json
+          {
+              "msg": "Os campos nome, fragilidade e tipo sao obrigatorios"
+          }
+          ```
+        * **500 Internal Server Error:** Falha operacional no banco de dados.
+          ```json
+          {
+              "msg": "Erro ao registrar encomenda.: [Descricao do Erro]"
+            }
+            ```
       """
     dados = request.get_json()
     nome = dados.get('nome')
@@ -494,13 +494,12 @@ def cadastro_movimentacao():
 
     print("DADOS RECEBIDOS:", dados)
     situacao = dados.get('situacao')
-    localizacao = dados.get('localizacao')
     codigo_rastreio = dados.get('codigo_rastreio')
-    usuario_id = dados.get('usuario_id')
-    entregador_id = dados.get('entregador_id')
+    centro_de_transporcacao_id = dados.get('centro_de_transporcacao_id')
 
-    if not situacao or not localizacao or not codigo_rastreio or not usuario_id:
-        return jsonify({"msg": "Os campos situacao, localizacao, codigo_rastreio e usuario_id sao obrigatorios"}), 400
+
+    if not situacao or not codigo_rastreio or not centro_de_transporcacao_id:
+        return jsonify({"msg": "Os campos situacao, codigo_rastreio, centro_de_transporcacao sao obrigatorios"}), 400
 
     banco = SessionLocal()
     try:
@@ -524,10 +523,9 @@ def cadastro_movimentacao():
 
         nova_movimentacao = Movimentacao(
             situacao=situacao,
-            localizacao=localizacao,
             encomenda_id=encomenda.id,
-            usuario_id=usuario_id,
-            entregador_id=entregador_id
+            centro_de_transporcacao_id=centro_de_transporcacao_id
+
         )
         banco.add(nova_movimentacao)
         banco.commit()
@@ -537,6 +535,8 @@ def cadastro_movimentacao():
         return jsonify({"msg": f"Erro ao registrar movimentacao.: {str(e)}"}), 500
     finally:
         banco.close()
+
+
 
 def gerar_codigo_unico(banco):
     data = datetime.datetime.now()
@@ -601,6 +601,7 @@ def buscar_centro_transporte(centro_id):
     finally:
         banco.close()
 
+
 @app.route('/buscar_cliente/<int:cliente_id>', methods=['GET'])
 def buscar_cliente(cliente_id):
     """
@@ -647,6 +648,7 @@ def buscar_cliente(cliente_id):
     finally:
         banco.close()
 
+
 @app.route("/buscar_entregador/<int:entregador_id>", methods=['GET'])
 def buscar_entregador(entregador_id):
     """
@@ -689,6 +691,7 @@ def buscar_entregador(entregador_id):
     finally:
         banco.close()
 
+
 @app.route('/buscar_usuario/<int:usuario_id>', methods=['GET'])
 def buscar_usuario(usuario_id):
     """
@@ -730,6 +733,63 @@ def buscar_usuario(usuario_id):
         return jsonify({"msg": "Usuario não encontrado"}), 404
     except Exception as e:
         return jsonify({"msg": f"Erro ao buscar usuarioi.: {str(e)}"}), 500
+    finally:
+        banco.close()
+
+
+@app.route('/buscar_movimentacao/<string:codigo_rastreio>', methods=['GET'])
+def buscar_movimentacao(codigo_rastreio):
+    """
+    **API para Buscar as Movimentacoes por Codigo de Rastreio**
+
+    ### Endpoint:
+    GET /buscar_movimentacao/<codigo_rastreio>
+
+    ### Respostas (JSON):
+    * **200 OK:** Movimentacoes encontradas com sucesso.
+      ```json
+      [
+          {
+              "id": 5,
+              "situacao": "Em transito",
+              "data_hora": "Tue, 19 May 2026 10:30:00 GMT",
+              "encomenda_id": 1,
+              "centro_de_transporcacao_id": 2
+          }
+      ]
+      ```
+    * **404 Not Found:** Encomenda nao encontrada no banco de dados.
+      ```json
+      {
+          "msg": "Encomenda nao encontrada"
+      }
+      ```
+    * **500 Internal Server Error:** Falha operacional no banco de dados.
+      ```json
+      {
+          "msg": "Erro ao buscar movimentacoes.: [Descricao do Erro]"
+      }
+      ```
+    """
+    banco = SessionLocal()
+    try:
+        buscador = BuscarEncomenda()
+        encomenda = buscador.por_codigo(codigo_rastreio)
+
+        if encomenda:
+            consulta = (
+                select(Movimentacao)
+                .where(Movimentacao.encomenda_id == encomenda["id"])
+                .order_by(Movimentacao.data_hora.desc())
+            )
+            movimentacoes = banco.execute(consulta).scalars().all()
+
+            resultado = [m.serialize() for m in movimentacoes]
+            return jsonify(resultado), 200
+
+        return jsonify({"msg": "Encomenda nao encontrada"}), 404
+    except Exception as e:
+        return jsonify({"msg": f"Erro ao buscar movimentacoes.: {str(e)}"}), 500
     finally:
         banco.close()
 

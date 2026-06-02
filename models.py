@@ -191,8 +191,6 @@ class BuscarEntregador:
             db.close()
 
 
-
-
 class ListarEncomendas:
     def todas(self):
         db: Session = SessionLocal()
@@ -209,22 +207,20 @@ class Movimentacao(Base):
     __tablename__ = 'movimentacoes'
     id = Column(Integer, primary_key=True)
     situacao = Column(String(100), nullable=False) #Em trânsito/Entregue
-    localizacao = Column(String(255), nullable=False)
     data_hora = Column(DateTime, nullable=False, server_default=func.now())
 
     encomenda_id = Column(Integer, ForeignKey('encomendas.id'), nullable=False)
-    entregador_id = Column(Integer, ForeignKey('entregadores.id'), nullable=True)
-    usuario_id = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
+    centro_de_transporcacao_id  = Column(Integer, ForeignKey('centro_de_transporcacoes.id'), nullable=False)
+
 
     def serialize(self):
         return {
             "id": self.id,
             "situacao": self.situacao,
-            "localizacao": self.localizacao,
             "data_hora": self.data_hora,
             "encomenda_id": self.encomenda_id,
-            "entregador_id": self.entregador_id,
-            "usuario_id": self.usuario_id
+            "centro_de_transporcacao_id": self.centro_de_transporcacao_id
+
         }
 
 Base.metadata.create_all(engine) #Cria as tabelas
