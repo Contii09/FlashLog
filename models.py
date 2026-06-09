@@ -211,8 +211,7 @@ class Movimentacao(Base):
     data_hora = Column(DateTime, nullable=False, server_default=func.now())
 
     encomenda_id = Column(Integer, ForeignKey('encomendas.id'), nullable=False)
-    centro_de_transporcacao_id  = Column(Integer, ForeignKey('centro_de_transporcacoes.id'), nullable=False)
-
+    galpao_id = Column(Integer, ForeignKey('galpoes.id'), nullable=False)
 
     def serialize(self):
         return {
@@ -220,8 +219,16 @@ class Movimentacao(Base):
             "situacao": self.situacao,
             "data_hora": self.data_hora,
             "encomenda_id": self.encomenda_id,
-            "centro_de_transporcacao_id": self.centro_de_transporcacao_id
+            "galpoes_id": self.galpao_id
 
         }
+
+class Galpao(Base):
+    __tablename__ = "galpoes"
+
+    id = Column(Integer, primary_key=True)
+    nome = Column(String(255), nullable=False)
+    localizacao = Column(String(255), nullable=False)
+
 
 Base.metadata.create_all(engine) #Cria as tabelas
