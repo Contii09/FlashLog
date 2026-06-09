@@ -203,6 +203,7 @@ class ListarEncomendas:
             db.close()
 
 
+
 class Movimentacao(Base):
     __tablename__ = 'movimentacoes'
     id = Column(Integer, primary_key=True)

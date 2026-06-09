@@ -1,7 +1,9 @@
 import random, datetime
 import string
-from flask import jsonify, request
+from flask import jsonify, request, flash, url_for, redirect, render_template
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+
 from main import app
 from models import Usuario, Encomenda, Entregador, CentroDeTranporcacao, Cliente, SessionLocal, ListarEncomendas, \
     BuscarEncomenda, Movimentacao, BuscarCentroDeTransporte, BuscarCliente, BuscarEntregador, BuscarUsuario
@@ -81,6 +83,7 @@ def cadastro_encomendas():
     finally:
         banco.close()
 
+
 @app.route('/cadastro_usuario', methods=['POST'])
 def cadastro_usuario():
     """
@@ -152,6 +155,7 @@ def cadastro_usuario():
         return jsonify({"msg": f"Erro ao registrar usuario.: {str(e)}"}), 500
     finally:
         banco.close()
+
 
 @app.route('/cadastro_cliente', methods=['POST'])
 def cadastro_cliente():
@@ -230,6 +234,7 @@ def cadastro_cliente():
     finally:
         banco.close()
 
+
 @app.route('/cadastro_entregador', methods=['POST'])
 def cadastro_entregador():
     """
@@ -287,6 +292,7 @@ def cadastro_entregador():
     finally:
         banco.close()
 
+
 @app.route('/cadastro_centro_transporte', methods=['POST'])
 def cadastro_centro_transporte():
     """
@@ -343,6 +349,7 @@ def cadastro_centro_transporte():
     finally:
         banco.close()
 
+
 @app.route('/listar_encomendas', methods=['GET'])
 def listar_encomendas():
     """
@@ -377,6 +384,7 @@ def listar_encomendas():
         return jsonify(listador.todas()), 200
     except Exception as e:
         return jsonify({"msg": f"Erro ao listar encomendas.: {str(e)}"}), 500
+
 
 @app.route('/buscar_encomenda/<string:codigo_rastreio>', methods=['GET'])
 def buscar_encomenda(codigo_rastreio):
@@ -445,6 +453,7 @@ def buscar_encomenda(codigo_rastreio):
     finally:
         banco.close()
 
+
 @app.route('/cadastro_movimentacao', methods=['POST'])
 def cadastro_movimentacao():
     """
@@ -497,7 +506,6 @@ def cadastro_movimentacao():
     codigo_rastreio = dados.get('codigo_rastreio')
     centro_de_transporcacao_id = dados.get('centro_de_transporcacao_id')
 
-
     if not situacao or not codigo_rastreio or not centro_de_transporcacao_id:
         return jsonify({"msg": "Os campos situacao, codigo_rastreio, centro_de_transporcacao sao obrigatorios"}), 400
 
@@ -537,19 +545,18 @@ def cadastro_movimentacao():
         banco.close()
 
 
-
 def gerar_codigo_unico(banco):
     data = datetime.datetime.now()
     alfabeto = [
         "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
-        "k", "l", "m","n", "o", "p", "q", "r", "s", "t", "u", "v",
+        "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
         "w", "x", "y", "z"
     ]
     codigo = random.choice(alfabeto).upper()
     codigo1 = random.choice(alfabeto).upper()
     codigo2 = random.choice(alfabeto).upper()
-    codigo_unico = str(data.timestamp()). replace(".", "")
-    codigo_final = str(codigo+codigo1+codigo2)+codigo_unico
+    codigo_unico = str(data.timestamp()).replace(".", "")
+    codigo_final = str(codigo + codigo1 + codigo2) + codigo_unico
 
     conslta = select(Encomenda).where(Encomenda.codigo_rastreio == codigo_final)
     resultado = banco.execute(conslta).scalars().first()
@@ -687,9 +694,10 @@ def buscar_entregador(entregador_id):
             return jsonify(resultado), 200
         return jsonify({"msg": "Entregador nao encontrada"}), 404
     except Exception as e:
-        return jsonify({"msg":"Erro ao buscar entregador.:{str(e)}"}), 500
+        return jsonify({"msg": "Erro ao buscar entregador.:{str(e)}"}), 500
     finally:
         banco.close()
+
 
 
 @app.route('/buscar_usuario/<int:usuario_id>', methods=['GET'])
@@ -794,6 +802,500 @@ def buscar_movimentacao(codigo_rastreio):
         banco.close()
 
 
+@app.route('/editar_usuario/<var_id>', methods=['PUT'])
+def editar_usuario(var_id):
+    """
+        **API para Edição de Usuário**
+        ### Endpoint:
+        PUT /editar_usuario/<var_id>
+
+        ### Parâmetros de Entrada (JSON):
+        ```json
+        {
+            "nome": "string (opcional) - Novo nome completo do usuario",
+            "email": "string (opcional) - Novo endereco de e-mail unico",
+            "senha": "string (opcional) - Nova senha em texto limpo"
+        }
+        ```
+
+        ### Respostas (JSON):
+        * **200 OK:** Usuário atualizado com sucesso.
+          ```json
+          {
+              "mensagem": "Usuário atualizado com sucesso!",
+              "usuario": {
+                  "id": 1,
+                  "nome": "Nome Atualizado",
+                  "email": "usuario_atualizado@exemplo.com"
+              }
+          }
+          ```
+        * **400 Bad Request:** Requisição não contém dados válidos em JSON.
+          ```json
+          {
+              "erro": "Requisição precisa conter dados em JSON"
+          }
+          ```
+        * **404 Not Found:** Usuário não encontrado no banco de dados.
+          ```json
+          {
+              "erro": "Usuário não encontrado"
+          }
+          ```
+        * **500 Internal Server Error:** Falha operacional no banco de dados.
+          ```json
+          {
+              "erro": "Erro no banco de dados ao atualizar usuário"
+          }
+          ```
+        """
+    banco = SessionLocal()
+
+    try:
+        # construir sql e executar a busca
+        usuario_editar = select(Usuario).where(Usuario.id == var_id)
+        resultado = banco.execute(usuario_editar).scalar_one_or_none()
+
+        # verificar se o usuário existe
+        if not resultado:
+            return jsonify({"erro": "Usuário não encontrado"}), 404
+
+        # alimentar variaveis com dados do JSON recebido
+        dados = request.get_json()
+        if not dados:
+            return jsonify({"erro": "Requisição precisa conter dados em JSON"}), 400
+
+        nome_ = dados.get('nome')
+        email_ = dados.get('email')
+        senha_ = dados.get('senha')
+
+        # atualizar os campos se foram enviados
+        if nome_:
+            resultado.nome = nome_
+        if email_:
+            resultado.email = email_
+        if senha_:
+            resultado.senha = senha_
+
+        banco.commit()
+
+        # retornar sucesso em JSON
+        return jsonify({
+            "mensagem": "Usuário atualizado com sucesso!",
+            "usuario": {
+                "id": resultado.id,
+                "nome": resultado.nome,
+                "email": resultado.email
+            }
+        }), 200
+
+    except SQLAlchemyError as e:
+        banco.rollback()
+        print(f'Erro na base de dados: {e}')
+        return jsonify({"erro": "Erro no banco de dados ao atualizar usuário"}), 500
+
+    except Exception as ex:
+        print(f'Ocorreu um erro ao atualizar: {ex}')
+        return jsonify({"erro": "Ocorreu um erro interno ao atualizar"}), 500
+
+    finally:
+        banco.close()
+
+
+@app.route('/editar_encomenda/<var_id>', methods=['PUT'])
+def editar_encomenda(var_id):
+    """
+        **API para Edição de Encomendas**
+        ### Endpoint:
+        PUT /editar_encomenda/<var_id>
+
+        ### Parametros de Entrada (JSON):
+        ```json
+        {
+            "nome": "string (opcional) - Novo nome ou descricao do item",
+            "fragilidade": "string (opcional) - Novo nivel de fragilidade (Ex: Alta, Baixa)",
+            "tipo": "string (opcional) - Nova categoria do produto"
+        }
+        ```
+
+        ### Respostas (JSON):
+        * **200 OK:** Encomenda atualizada com sucesso.
+          ```json
+          {
+              "msg": "Encomenda atualizada com sucesso",
+              "encomenda": {
+                  "id": 1,
+                  "codigo_rastreio": "FLASH123456",
+                  "nome": "Nome Atualizado",
+                  "fragilidade": "Alta",
+                  "tipo": "Categoria Atualizada"
+              }
+          }
+          ```
+        * **400 Bad Request:** Requisição não contém dados válidos.
+          ```json
+          {
+              "msg": "Requisicao precisa conter dados em JSON"
+          }
+          ```
+        * **404 Not Found:** Encomenda não encontrada no banco de dados.
+          ```json
+          {
+              "msg": "Encomenda nao encontrada"
+          }
+          ```
+        * **500 Internal Server Error:** Falha operacional no banco de dados.
+          ```json
+          {
+              "msg": "Erro ao atualizar encomenda: [Descricao do Erro]"
+          }
+          ```
+    """
+    banco = SessionLocal()
+    try:
+        # construir sql e buscar a encomenda pelo ID
+        encomenda_editar = select(Encomenda).where(Encomenda.id == var_id)
+        resultado = banco.execute(encomenda_editar).scalar_one_or_none()
+
+        # verificar se a encomenda existe
+        if not resultado:
+            return jsonify({"msg": "Encomenda nao encontrada"}), 404
+
+        # capturar os dados do JSON recebido
+        dados = request.get_json()
+        if not dados:
+            return jsonify({"msg": "Requisicao precisa conter dados em JSON"}), 400
+
+        nome_ = dados.get('nome')
+        fragilidade_ = dados.get('fragilidade')
+        tipo_ = dados.get('tipo')
+
+        # atualizar apenas os campos que foram enviados no JSON
+        if nome_:
+            resultado.nome = nome_
+        if fragilidade_:
+            resultado.fragilidade = fragilidade_
+        if tipo_:
+            resultado.tipo = tipo_
+
+        banco.commit()
+
+        return jsonify({
+            "msg": "Encomenda atualizada com sucesso",
+            "encomenda": {
+                "id": resultado.id,
+                "codigo_rastreio": resultado.codigo_rastreio,
+                "nome": resultado.nome,
+                "fragilidade": resultado.fragilidade,
+                "tipo": resultado.tipo
+            }
+        }), 200
+
+    except Exception as e:
+        banco.rollback()
+        return jsonify({"msg": f"Erro ao atualizar encomenda: {str(e)}"}), 500
+
+    finally:
+        banco.close()
+
+
+@app.route('/editar_cliente/<var_id>', methods=['PUT'])
+def editar_cliente(var_id):
+    """
+    **API para Edição de Cliente**
+    ### Endpoint:
+    PUT /editar_cliente/<var_id>
+
+    ### Parâmetros de Entrada (JSON):
+    ```json
+    {
+        "nome": "string (opcional) - Novo nome do cliente",
+        "email": "string (opcional) - Novo endereço de e-mail único",
+        "senha": "string (opcional) - Nova senha em texto limpo para criptografia",
+        "endereco": "boolean/string (opcional) - Novo indicador de endereço",
+        "produto": "string (opcional) - Novo tipo de produto/encomenda"
+    }
+    ```
+
+    ### Respostas (JSON):
+    * **200 OK:** Cliente atualizado com sucesso.
+      ```json
+      {
+          "msg": "Cliente atualizado com sucesso",
+          "cliente": {
+              "id": 1,
+              "nome": "Nome Atualizado",
+              "email": "email_atualizado@exemplo.com",
+              "endereco": "Novo Endereço",
+              "produto": "Novo Produto"
+          }
+      }
+      ```
+    * **400 Bad Request:** Requisição não contém dados válidos em JSON.
+      ```json
+      {
+          "msg": "Requisicao precisa conter dados em JSON"
+      }
+      ```
+    * **404 Not Found:** Cliente não encontrado no banco de dados.
+      ```json
+      {
+          "msg": "Cliente nao encontrado"
+      }
+      ```
+    * **409 Conflict:** E-mail já está em uso por outro cliente.
+      ```json
+      {
+          "msg": "Este e-mail ja esta cadastrado"
+      }
+      ```
+    * **500 Internal Server Error:** Falha operacional no banco de dados.
+      ```json
+      {
+          "msg": "Erro ao atualizar cliente: [Descricao do Erro]"
+      }
+      ```
+    """
+    banco = SessionLocal()
+    try:
+        # construir sql e buscar o cliente pelo ID
+        cliente_editar = select(Cliente).where(Cliente.id == var_id)
+        resultado = banco.execute(cliente_editar).scalar_one_or_none()
+
+        # verificar se o cliente existe
+        if not resultado:
+            return jsonify({"msg": "Cliente nao encontrado"}), 404
+
+        # capturar os dados do JSON recebido
+        dados = request.get_json()
+        if not dados:
+            return jsonify({"msg": "Requisicao precisa conter dados em JSON"}), 400
+
+        nome_ = dados.get('nome')
+        email_ = dados.get('email')
+        senha_ = dados.get('senha')
+        endereco_ = dados.get('endereco')
+        produto_ = dados.get('produto')
+
+        # se o e-mail foi enviado para alteração, verifica se já existe em outro ID
+        if email_ and email_ != resultado.email:
+            consulta = select(Cliente).where(Cliente.email == email_)
+            cliente_existente = banco.execute(consulta).scalar_one_or_none()
+            if cliente_existente:
+                return jsonify({"msg": "Este e-mail ja esta cadastrado"}), 409
+            resultado.email = email_
+
+        # atualizar apenas os demais campos que foram enviados no JSON
+        if nome_:
+            resultado.nome = nome_
+        if senha_:
+            if hasattr(resultado, 'setar_senha_hash'):
+                resultado.setar_senha_hash(senha_)
+        if endereco_ is not None:  # permite a passagem de booleano falso se for o caso
+            resultado.endereco = endereco_
+        if produto_:
+            resultado.produto = produto_
+
+        banco.commit()
+
+        return jsonify({
+            "msg": "Cliente atualizado com sucesso",
+            "cliente": {
+                "id": resultado.id,
+                "nome": resultado.nome,
+                "email": resultado.email,
+                "endereco": resultado.endereco,
+                "produto": resultado.produto
+            }
+        }), 200
+
+    except Exception as e:
+        banco.rollback()
+        return jsonify({"msg": f"Erro ao atualizar cliente: {str(e)}"}), 500
+
+    finally:
+        banco.close()
+
+
+@app.route('/editar_entregador/<var_id>', methods=['PUT'])
+def editar_entregador(var_id):
+    """
+    **API para Edição de Entregador**
+    ### Endpoint:
+    PUT /editar_entregador/<var_id>
+
+    ### Parâmetros de Entrada (JSON):
+    ```json
+    {
+        "nome": "string (opcional) - Novo nome do entregador",
+        "veiculo": "boolean/string (opcional) - Novo indicador de veículo do entregador"
+    }
+    ```
+
+    ### Respostas (JSON):
+    * **200 OK:** Entregador atualizado com sucesso.
+      ```json
+      {
+          "msg": "Entregador atualizado com sucesso",
+          "entregador": {
+              "id": 1,
+              "nome": "Nome Atualizado",
+              "veiculo": "Moto"
+          }
+      }
+      ```
+    * **400 Bad Request:** Requisição não contém dados válidos em JSON.
+      ```json
+      {
+          "msg": "Requisicao precisa conter dados em JSON"
+      }
+      ```
+    * **404 Not Found:** Entregador não encontrado no banco de dados.
+      ```json
+      {
+          "msg": "Entregador nao encontrado"
+      }
+      ```
+    * **500 Internal Server Error:** Falha operacional no banco de dados.
+      ```json
+      {
+          "msg": "Erro ao atualizar entregador: [Descricao do Erro]"
+      }
+      ```
+    """
+    banco = SessionLocal()
+    try:
+        # construir sql e buscar o entregador pelo ID
+        entregador_editar = select(Entregador).where(Entregador.id == var_id)
+        resultado = banco.execute(entregador_editar).scalar_one_or_none()
+
+        # verificar se o entregador existe
+        if not resultado:
+            return jsonify({"msg": "Entregador nao encontrado"}), 404
+
+        # capturar os dados do JSON recebido
+        dados = request.get_json()
+        if not dados:
+            return jsonify({"msg": "Requisicao precisa conter dados em JSON"}), 400
+
+        nome_ = dados.get('nome')
+        veiculo_ = dados.get('veiculo')
+
+        # atualizar apenas os campos que foram enviados no JSON
+        if nome_:
+            resultado.nome = nome_
+        if veiculo_ is not None:  # permite a passagem de booleano falso ou string vazia se aplicável
+            resultado.veiculo = veiculo_
+
+        banco.commit()
+
+        return jsonify({
+            "msg": "Entregador atualizado com sucesso",
+            "entregador": {
+                "id": resultado.id,
+                "nome": resultado.nome,
+                "veiculo": resultado.veiculo
+            }
+        }), 200
+
+    except Exception as e:
+        banco.rollback()
+        return jsonify({"msg": f"Erro ao atualizar entregador: {str(e)}"}), 500
+
+    finally:
+        banco.close()
+
+
+@app.route('/editar_centro_transporte/<var_id>', methods=['PUT'])
+def editar_centro_transporte(var_id):
+    """
+    **API para Edição de Centro de Transporte**
+    ### Endpoint:
+    PUT /editar_centro_transporte/<var_id>
+
+    ### Parâmetros de Entrada (JSON):
+    ```json
+    {
+        "nome": "string (opcional) - Novo nome ou descricao do centro de transporte",
+        "localizacao": "boolean/string (opcional) - Novo indicador de localizacao da transportadora"
+    }
+    ```
+
+    ### Respostas (JSON):
+    * **200 OK:** Centro de transporte atualizado com sucesso.
+      ```json
+      {
+          "msg": "Centro de transporte atualizado com sucesso",
+          "centro": {
+              "id": 1,
+              "nome": "Nome Atualizado",
+              "localizacao": "São Paulo - SP"
+          }
+      }
+      ```
+    * **400 Bad Request:** Requisição não contém dados válidos em JSON.
+      ```json
+      {
+          "msg": "Requisicao precisa conter dados em JSON"
+      }
+      ```
+    * **404 Not Found:** Centro de transporte não encontrado no banco de dados.
+      ```json
+      {
+          "msg": "Centro de transporte nao encontrado"
+      }
+      ```
+    * **500 Internal Server Error:** Falha operacional no banco de dados.
+      ```json
+      {
+          "msg": "Erro ao atualizar centro de transporte: [Descricao do Erro]"
+      }
+      ```
+    """
+    banco = SessionLocal()
+    try:
+        # construir sql e buscar o centro de transporte pelo ID
+        centro_editar = select(CentroDeTranporcacao).where(CentroDeTranporcacao.id == var_id)
+        resultado = banco.execute(centro_editar).scalar_one_or_none()
+
+        # verificar se o centro existe
+        if not resultado:
+            return jsonify({"msg": "Centro de transporte nao encontrado"}), 404
+
+        # capturar os dados do JSON recebido
+        dados = request.get_json()
+        if not dados:
+            return jsonify({"msg": "Requisicao precisa conter dados em JSON"}), 400
+
+        nome_ = dados.get('nome')
+        localizacao_ = dados.get('localizacao')
+
+        # atualizar apenas os campos que foram enviados no JSON
+        if nome_:
+            resultado.nome = nome_
+        if localizacao_ is not None:  # permite strings ou booleanos falsos se aplicável
+            resultado.localizacao = localizacao_
+
+        banco.commit()
+
+        return jsonify({
+            "msg": "Centro de transporte atualizado com sucesso",
+            "centro": {
+                "id": resultado.id,
+                "nome": resultado.nome,
+                "localizacao": resultado.localizacao
+            }
+        }), 200
+
+    except Exception as e:
+        banco.rollback()
+        return jsonify({"msg": f"Erro ao atualizar centro de transporte: {str(e)}"}), 500
+
+    finally:
+        banco.close()
+
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001, host="0.0.0.0")
-
