@@ -23,6 +23,7 @@ def cadastro_encomendas():
             "nome": "string (obrigatorio) - Nome ou descricao do item",
             "fragilidade": "string (obrigatorio) - Nivel de fragilidade (Ex: Alta, Baixa)",
             "tipo": "string (obrigatorio) - Categoria do produto"
+            "remetente": "string (obrigatorio) - Lugar de onde o produto esta saindo"
         }
         ```
 
@@ -465,6 +466,7 @@ def cadastro_galpao():
         {
             "nome": "string (obrigatorio) - Nome do galpao",
             "localizacao": "string (obrigatorio) - Cidade, Estado ou endereco completo"
+            "capacidade": "string (obrigatorio) - Capacidade do galpão"
         }
         ```
 
