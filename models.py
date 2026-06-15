@@ -40,6 +40,7 @@ class Encomenda(Base):
     codigo_rastreio = Column(String(50), unique=True, nullable=False)
     fragilidade = Column(String(255), nullable=False)
     tipo = Column(String(255), nullable=False)
+    remetente = Column(String(255), nullable=False)
     criado_em = Column(DateTime, nullable=False, server_default=func.now())
 
     def serialize(self):
@@ -49,6 +50,7 @@ class Encomenda(Base):
             "codigo_rastreio": self.codigo_rastreio,
             "fragilidade": self.fragilidade,
             "tipo": self.tipo,
+            "remetente": self.remetente,
             "criado_em": self.criado_em
         }
         return dados
@@ -97,7 +99,6 @@ class Cliente(Base):
     email = Column(String(255), nullable=False)
     senha = Column(String(255), nullable=False)
     endereco = Column(String(250), nullable=False)
-    produto = Column(String(250), nullable=False)
     criado_em = Column(DateTime, nullable=False, server_default=func.now())
 
     def setar_senha_hash(self,senha):
@@ -114,7 +115,6 @@ class Cliente(Base):
             "email": self.email,
             "senha": self.senha,
             "endereco": self.endereco,
-            "produto": self.produto,
             "criado_em": self.criado_em
         }
         return dados
@@ -143,6 +143,19 @@ class BuscarCentroDeTransporte:
 
             if centro:
                 return centro.serialize()
+            return None
+        finally:
+            db.close()
+
+class BuscarGalpoes:
+    def por_id(self, galpoes_id: int):
+        db: Session = SessionLocal()
+        try:
+            consulta = select(Galpao).filter(Galpao.id == galpoes_id)
+            galpao = db.scalar(consulta)
+
+            if galpao:
+                return galpao.serialize()
             return None
         finally:
             db.close()
@@ -229,6 +242,18 @@ class Galpao(Base):
     id = Column(Integer, primary_key=True)
     nome = Column(String(255), nullable=False)
     localizacao = Column(String(255), nullable=False)
+    capacidade = Column(String(255), nullable=False)
+    criado_em = Column(DateTime, nullable=False, server_default=func.now())
+
+    def serialize(self):
+        dados = {
+            "id": self.id,
+            "localizacao": self.localizacao,
+            "nome": self.nome,
+            "capacidade": self.capacidade,
+            "criado_em": self.criado_em
+        }
+        return dados
 
 
 Base.metadata.create_all(engine) #Cria as tabelas

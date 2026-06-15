@@ -6,7 +6,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from main import app
 from models import Usuario, Encomenda, Entregador, CentroDeTranporcacao, Cliente, SessionLocal, ListarEncomendas, \
-    BuscarEncomenda, Movimentacao, BuscarCentroDeTransporte, BuscarCliente, BuscarEntregador, BuscarUsuario, Galpao
+    BuscarEncomenda, Movimentacao, BuscarCentroDeTransporte, BuscarCliente, BuscarEntregador, BuscarUsuario, Galpao, \
+    BuscarGalpoes
 
 
 @app.route('/cadastro_encomendas', methods=['POST'])
@@ -51,9 +52,10 @@ def cadastro_encomendas():
     nome = dados.get('nome')
     fragilidade = dados.get('fragilidade')
     tipo = dados.get('tipo')
+    remetente = dados.get('remetente')
 
-    if not nome or not fragilidade or not tipo:
-        return jsonify({"msg": "Os campos nome, fragilidade e tipo sao obrigatorios"}), 400
+    if not nome or not fragilidade or not tipo or not remetente:
+        return jsonify({"msg": "Os campos nome, fragilidade, tipo e remetente sao obrigatorios"}), 400
 
     banco = SessionLocal()
     try:
@@ -64,7 +66,8 @@ def cadastro_encomendas():
             codigo_rastreio=codigo_gerado,
             nome=nome,
             fragilidade=fragilidade,
-            tipo=tipo
+            tipo=tipo,
+            remetente=remetente
         )
 
         banco.add(nova_encomenda)
@@ -171,7 +174,6 @@ def cadastro_cliente():
         "email": "string (obrigatorio) - Endereco de e-mail unico",
         "senha": "string (obrigatorio) - Senha em texto limpo para criptografia",
         "endereco": "boolean/string (obrigatorio) - Indicador de endereco",
-        "produto": "string (obrigatorio) - Tipo de produto/encomenda"
     }
     ```
 
@@ -207,10 +209,9 @@ def cadastro_cliente():
     email = dados.get('email')
     senha = dados.get('senha')
     endereco = dados.get('endereco')
-    produto = dados.get('produto')
 
-    if not nome or not email or not senha or not endereco or not produto:
-        return jsonify({"msg": "Os campos Nome, Email, Senha, Endereco e Produto sao obrigatorios"}), 400
+    if not nome or not email or not senha or not endereco:
+        return jsonify({"msg": "Os campos Nome, Email, Senha, Endereco sao obrigatorios"}), 400
 
     banco = SessionLocal()
     try:
@@ -221,7 +222,7 @@ def cadastro_cliente():
         if cliente_existente:
             return jsonify({"msg": "Este e-mail ja esta cadastrado"}), 409
 
-        novo_cliente = Cliente(nome=nome, email=email, endereco=endereco, produto=produto)
+        novo_cliente = Cliente(nome=nome, email=email, endereco=endereco, senha=senha)
         if hasattr(novo_cliente, 'setar_senha_hash'):
             novo_cliente.setar_senha_hash(senha)
 
@@ -491,15 +492,17 @@ def cadastro_galpao():
     dados = request.get_json()
     nome = dados.get('nome')
     localizacao = dados.get('localizacao')
+    capacidade = dados.get('capacidade')
 
-    if not nome or not localizacao:
-        return jsonify({"msg": "Os campos nome e localizacao sao obrigatorios"}), 400
+    if not nome or not localizacao or not capacidade:
+        return jsonify({"msg": "Os campos nome, localizacao e capacidade sao obrigatorios"}), 400
 
     banco = SessionLocal()
     try:
         novo_galpao = Galpao(
             nome=nome,
-            localizacao=localizacao
+            localizacao=localizacao,
+            capacidade=capacidade
         )
 
         banco.add(novo_galpao)
@@ -685,6 +688,50 @@ def buscar_centro_transporte(centro_id):
         banco.close()
 
 
+@app.route('/buscar_galpao/<int:galpoes_id>', methods=['GET'])
+def buscar_galpoes(galpoes_id):
+    """
+    **API para Busca de Centro de Transporte por ID**
+
+    ### Endpoint:
+    GET /buscar_centro_transporte/<int:centro_id>
+
+    ### Respostas (JSON):
+    * **200 OK:** Centro de transporte encontrado com sucesso.
+      ```json
+      {
+          "id": 1,
+          "nome": "qqqq",
+          "localizacao": "São Paulo"
+      }
+      ```
+    * **404 Not Found:** Centro de transporte não encontrado.
+      ```json
+      {
+          "msg": "Centro de transporte não encontrado"
+      }
+      ```
+    * **500 Internal Server Error:** Falha operacional no banco de dados.
+      ```json
+      {
+          "msg": "Erro ao buscar centro de transporte.: [Descrição do Erro]"
+      }
+      ```
+    """
+    banco = SessionLocal()
+    try:
+        buscador = BuscarGalpoes()
+        resultado = buscador.por_id(galpoes_id)
+
+        if resultado:
+            return jsonify(resultado), 200
+
+        return jsonify({"msg": "Galpoes não encontrado"}), 404
+    except Exception as e:
+        return jsonify({"msg": f"Erro ao buscar galpoes.: {str(e)}"}), 500
+    finally:
+        banco.close()
+
 @app.route('/buscar_cliente/<int:cliente_id>', methods=['GET'])
 def buscar_cliente(cliente_id):
     """
@@ -701,7 +748,6 @@ def buscar_cliente(cliente_id):
         "email": "selma@gmail.com",
         "senha": "123",
         "endereco": "rua brasil 123",
-        "produto": "tabua"
       }
       ```
     * **404 Not Found:** Cliente não encontrado.
@@ -1044,6 +1090,7 @@ def editar_encomenda(var_id):
         nome_ = dados.get('nome')
         fragilidade_ = dados.get('fragilidade')
         tipo_ = dados.get('tipo')
+        remetente_ = dados.get('remetente')
 
         # atualizar apenas os campos que foram enviados no JSON
         if nome_:
@@ -1052,6 +1099,8 @@ def editar_encomenda(var_id):
             resultado.fragilidade = fragilidade_
         if tipo_:
             resultado.tipo = tipo_
+        if remetente_:
+            resultado.remetente = remetente_
 
         banco.commit()
 
@@ -1062,7 +1111,8 @@ def editar_encomenda(var_id):
                 "codigo_rastreio": resultado.codigo_rastreio,
                 "nome": resultado.nome,
                 "fragilidade": resultado.fragilidade,
-                "tipo": resultado.tipo
+                "tipo": resultado.tipo,
+                "remetente": resultado.remetente
             }
         }), 200
 
@@ -1370,5 +1420,102 @@ def editar_centro_transporte(var_id):
         banco.close()
 
 
+
+@app.route('/editar_galpao/<var_id>', methods=['PUT'])
+def editar_galpao(var_id):
+    """
+    **API para Edição de Centro de Transporte**
+    ### Endpoint:
+    PUT /editar_centro_transporte/<var_id>
+
+    ### Parâmetros de Entrada (JSON):
+    ```json
+    {
+        "nome": "string (opcional) - Novo nome ou descricao do centro de transporte",
+        "localizacao": "boolean/string (opcional) - Novo indicador de localizacao da transportadora"
+    }
+    ```
+
+    ### Respostas (JSON):
+    * **200 OK:** Centro de transporte atualizado com sucesso.
+      ```json
+      {
+          "msg": "Centro de transporte atualizado com sucesso",
+          "centro": {
+              "id": 1,
+              "nome": "Nome Atualizado",
+              "localizacao": "São Paulo - SP"
+          }
+      }
+      ```
+    * **400 Bad Request:** Requisição não contém dados válidos em JSON.
+      ```json
+      {
+          "msg": "Requisicao precisa conter dados em JSON"
+      }
+      ```
+    * **404 Not Found:** Centro de transporte não encontrado no banco de dados.
+      ```json
+      {
+          "msg": "Centro de transporte nao encontrado"
+      }
+      ```
+    * **500 Internal Server Error:** Falha operacional no banco de dados.
+      ```json
+      {
+          "msg": "Erro ao atualizar centro de transporte: [Descricao do Erro]"
+      }
+      ```
+    """
+    banco = SessionLocal()
+    try:
+        # construir sql e buscar o centro de transporte pelo ID
+        galpao_editar = select(Galpao).where(Galpao.id == var_id)
+        resultado = banco.execute(galpao_editar).scalar_one_or_none()
+
+        # verificar se o centro existe
+        if not resultado:
+            return jsonify({"msg": "Galpao nao encontrado"}), 404
+
+        # capturar os dados do JSON recebido
+        dados = request.get_json()
+        if not dados:
+            return jsonify({"msg": "Requisicao precisa conter dados em JSON"}), 400
+
+        nome_ = dados.get('nome')
+        localizacao_ = dados.get('localizacao')
+        capacidade = dados.get('capacidade')
+
+        # atualizar apenas os campos que foram enviados no JSON
+        if nome_:
+            resultado.nome = nome_
+        if localizacao_ is not None:
+            resultado.localizacao = localizacao_
+        if capacidade is not None:
+            resultado.capacidade = capacidade
+
+        banco.commit()
+
+        return jsonify({
+            "msg": "Centro de transporte atualizado com sucesso",
+            "centro": {
+                "id": resultado.id,
+                "nome": resultado.nome,
+                "localizacao": resultado.localizacao,
+                "capacidade": resultado.capacidade
+            }
+        }), 200
+
+    except Exception as e:
+        banco.rollback()
+        return jsonify({"msg": f"Erro ao atualizar galpao: {str(e)}"}), 500
+
+    finally:
+        banco.close()
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001, host="0.0.0.0")
+
+
+
