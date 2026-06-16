@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from main import app
 from models import Usuario, Encomenda, Entregador, CentroDeTranporcacao, Cliente, SessionLocal, ListarEncomendas, \
     BuscarEncomenda, Movimentacao, BuscarCentroDeTransporte, BuscarCliente, BuscarEntregador, BuscarUsuario, Galpao, \
-    BuscarGalpoes
+    BuscarGalpoes, ListarGalpoes, Veiculo, BuscarVeiculo, ListarVeiculos
 
 
 @app.route('/cadastro_encomendas', methods=['POST'])
@@ -988,6 +988,7 @@ def editar_usuario(var_id):
         if not dados:
             return jsonify({"erro": "Requisição precisa conter dados em JSON"}), 400
 
+        id_ = dados.get('id')
         nome_ = dados.get('nome')
         email_ = dados.get('email')
         senha_ = dados.get('senha')
@@ -999,6 +1000,8 @@ def editar_usuario(var_id):
             resultado.email = email_
         if senha_:
             resultado.senha = senha_
+        if id_:
+            resultado.id = id_
 
         banco.commit()
 
@@ -1093,6 +1096,7 @@ def editar_encomenda(var_id):
         fragilidade_ = dados.get('fragilidade')
         tipo_ = dados.get('tipo')
         remetente_ = dados.get('remetente')
+        id_ = dados.get('id')
 
         # atualizar apenas os campos que foram enviados no JSON
         if nome_:
@@ -1103,6 +1107,8 @@ def editar_encomenda(var_id):
             resultado.tipo = tipo_
         if remetente_:
             resultado.remetente = remetente_
+        if id_:
+            resultado.id = id_
 
         banco.commit()
 
@@ -1203,6 +1209,7 @@ def editar_cliente(var_id):
         senha_ = dados.get('senha')
         endereco_ = dados.get('endereco')
         produto_ = dados.get('produto')
+        id_ = dados.get('id')
 
         # se o e-mail foi enviado para alteração, verifica se já existe em outro ID
         if email_ and email_ != resultado.email:
@@ -1222,6 +1229,8 @@ def editar_cliente(var_id):
             resultado.endereco = endereco_
         if produto_:
             resultado.produto = produto_
+        if id_:
+            resultado.id_ = id_
 
         banco.commit()
 
@@ -1307,12 +1316,15 @@ def editar_entregador(var_id):
 
         nome_ = dados.get('nome')
         veiculo_ = dados.get('veiculo')
+        id_ = dados.get('id')
 
         # atualizar apenas os campos que foram enviados no JSON
         if nome_:
             resultado.nome = nome_
         if veiculo_ is not None:  # permite a passagem de booleano falso ou string vazia se aplicável
             resultado.veiculo = veiculo_
+        if id_ is not None:  # permite a passagem de booleano falso ou string vazia se aplicável
+            resultado.id_ = id_
 
         banco.commit()
 
@@ -1396,12 +1408,15 @@ def editar_centro_transporte(var_id):
 
         nome_ = dados.get('nome')
         localizacao_ = dados.get('localizacao')
+        id_ = dados.get('id')
 
         # atualizar apenas os campos que foram enviados no JSON
         if nome_:
             resultado.nome = nome_
         if localizacao_ is not None:  # permite strings ou booleanos falsos se aplicável
             resultado.localizacao = localizacao_
+        if id_ is not None:
+            resultado.id_ = id
 
         banco.commit()
 
@@ -1487,6 +1502,7 @@ def editar_galpao(var_id):
         nome_ = dados.get('nome')
         localizacao_ = dados.get('localizacao')
         capacidade = dados.get('capacidade')
+        id_ = dados.get('id')
 
         # atualizar apenas os campos que foram enviados no JSON
         if nome_:
@@ -1514,6 +1530,270 @@ def editar_galpao(var_id):
 
     finally:
         banco.close()
+
+
+@app.route('/listar_galpoes', methods=['GET'])
+def listar_galpoes():
+    """
+       **API para Listagem de Galpoes**
+
+       ### Endpoint:
+       GET /listar_encomendas
+
+       ### Respostas (JSON):
+       * **200 OK:** Lista de encomendas retornada com sucesso.
+         ```json
+         [
+             {
+                 "id": 1,
+                 "codigo_rastreio": "FLASH987654",
+                 "nome": "Smartphone",
+                 "fragilidade": "Alta",
+                 "tipo": "Eletronicos",
+                 "criado_em": "Mon, 18 May 2026 15:42:00 GMT"
+             }
+         ]
+         ```
+       * **500 Internal Server Error:** Falha operacional no banco de dados.
+         ```json
+         {
+             "msg": "Erro ao listar encomendas.: [Descricao do Erro]"
+         }
+         ```
+       """
+    try:
+        listador = ListarGalpoes()
+        return jsonify(listador.todas()), 200
+    except Exception as e:
+        return jsonify({"msg": f"Erro ao listar galpoes.: {str(e)}"}), 500
+
+
+
+
+@app.route('/cadastro_veiculos', methods=['POST'])
+def cadastro_veiculos():
+    """
+      **API para Cadastro de Entregador**
+
+      ### Endpoint:
+      POST /cadastro_entregador
+
+      ### ParAmetros de Entrada (JSON):
+      ```json
+      {
+          "nome": "string (obrigatorio) - Nome ou descricao da encomenda",
+          "veiculo": "boolean/string (obrigatOrio) - Indicador o veiculo do entregador",
+
+      }
+      ```
+
+      ### Respostas (JSON):
+      * **201 Created:** Entregador registrado com sucesso.
+        ```json
+        {
+            "msg": "Entregador cadastrado com sucesso",
+            "enconmenda_id": 1
+        }
+        ```
+      * **400 Bad Request:** Ausencia de campos obrigatorios.
+        ```json
+        {
+            "msg": "Os campos Nome e veiculo sao obrigatorios"
+        }
+        ```
+      * **500 Internal Server Error:** Falha operacional no banco de dados.
+        ```json
+        {
+            "msg": "Erro ao registrar usuario.: [Descricao do Erro]"
+        }
+        ```
+      """
+    dados = request.get_json()
+    modelo = dados.get('modelo')
+
+    if not modelo:
+        return jsonify({"msg": "O campo modelo é obrigatorio"}), 400
+
+    banco = SessionLocal()
+    try:
+        novo_veiculo = Veiculo(modelo=modelo)
+        banco.add(novo_veiculo)
+        banco.commit()
+        return jsonify({"msg": "Veiculo criado com sucesso", "veiculo_id": novo_veiculo.id}), 201
+    except Exception as e:
+        banco.rollback()
+        return jsonify({"msg": f"Erro ao registrar veiculo.: {str(e)}"}), 500
+    finally:
+        banco.close()
+
+
+
+@app.route("/buscar_veiculo/<int:veiculo_id>", methods=['GET'])
+def buscar_veiculo(veiculo_id):
+    """
+       **API para Busca de Entregador por ID**
+
+       ### Endpoint:
+       GET /buscar_entregador/<int:entregador_id>
+
+       ### Respostas (JSON):
+       * **200 OK:** Cliente encontrado com sucesso.
+         ```json
+         {
+            "nome": "sm",
+            "veiculo": "sm"
+         }
+         ```
+       * **404 Not Found:** Entregador não encontrado.
+         ```json
+         {
+             "msg": "Entregador não encontrado"
+         }
+         ```
+       * **500 Internal Server Error:** Falha operacional no banco de dados.
+         ```json
+         {
+             "msg": "Erro ao buscar entregador.: [Descrição do Erro]"
+         }
+         ```
+       """
+    banco = SessionLocal()
+    try:
+        buscador = BuscarVeiculo()
+        resultado = buscador.por_id(veiculo_id)
+
+        if resultado:
+            return jsonify(resultado), 200
+        return jsonify({"msg": "Veiculo nao encontrada"}), 404
+    except Exception as e:
+        return jsonify({"msg": f"Erro ao buscar veiculo.:{str(e)}"}), 500
+    finally:
+        banco.close()
+
+
+
+
+@app.route('/editar_veiculo/<var_id>', methods=['PUT'])
+def editar_veiculo(var_id):
+    """
+    **API para Edição de Entregador**
+    ### Endpoint:
+    PUT /editar_entregador/<var_id>
+
+    ### Parâmetros de Entrada (JSON):
+    ```json
+    {
+        "nome": "string (opcional) - Novo nome do entregador",
+        "veiculo": "boolean/string (opcional) - Novo indicador de veículo do entregador"
+    }
+    ```
+
+    ### Respostas (JSON):
+    * **200 OK:** Entregador atualizado com sucesso.
+      ```json
+      {
+          "msg": "Entregador atualizado com sucesso",
+          "entregador": {
+              "id": 1,
+              "nome": "Nome Atualizado",
+              "veiculo": "Moto"
+          }
+      }
+      ```
+    * **400 Bad Request:** Requisição não contém dados válidos em JSON.
+      ```json
+      {
+          "msg": "Requisicao precisa conter dados em JSON"
+      }
+      ```
+    * **404 Not Found:** Entregador não encontrado no banco de dados.
+      ```json
+      {
+          "msg": "Entregador nao encontrado"
+      }
+      ```
+    * **500 Internal Server Error:** Falha operacional no banco de dados.
+      ```json
+      {
+          "msg": "Erro ao atualizar entregador: [Descricao do Erro]"
+      }
+      ```
+    """
+    banco = SessionLocal()
+    try:
+        # construir sql e buscar o entregador pelo ID
+        veiculo_editar = select(Veiculo).where(Veiculo.id == var_id)
+        resultado = banco.execute(veiculo_editar).scalar_one_or_none()
+
+        # verificar se o veiculo existe
+        if not resultado:
+            return jsonify({"msg": "Veiculo nao encontrado"}), 404
+
+        # capturar os dados do JSON recebido
+        dados = request.get_json()
+        if not dados:
+            return jsonify({"msg": "Requisicao precisa conter dados em JSON"}), 400
+
+        modelo_ = dados.get('modelo')
+        id_ = dados.get('id')
+
+        # atualizar apenas os campos que foram enviados no JSON
+        if modelo_:
+            resultado.modelo = modelo_
+        if id_ is not None:  # permite a passagem de booleano falso ou string vazia se aplicável
+            resultado.id_ = id_
+
+        banco.commit()
+
+        return jsonify({
+            "msg": "Veiculo atualizado com sucesso",
+            "entregador": {
+                "id": resultado.id,
+                "modelo": resultado.modelo
+            }
+        }), 200
+
+    except Exception as e:
+        banco.rollback()
+        return jsonify({"msg": f"Erro ao atualizar veiculo: {str(e)}"}), 500
+
+    finally:
+        banco.close()
+
+@app.route('/listar_veiculos', methods=['GET'])
+def listar_veiculos():
+    """
+       **API para Listagem de Encomendas**
+
+       ### Endpoint:
+       GET /listar_encomendas
+
+       ### Respostas (JSON):
+       * **200 OK:** Lista de encomendas retornada com sucesso.
+         ```json
+         [
+             {
+                 "id": 1,
+                 "codigo_rastreio": "FLASH987654",
+                 "nome": "Smartphone",
+                 "fragilidade": "Alta",
+                 "tipo": "Eletronicos",
+                 "criado_em": "Mon, 18 May 2026 15:42:00 GMT"
+             }
+         ]
+         ```
+       * **500 Internal Server Error:** Falha operacional no banco de dados.
+         ```json
+         {
+             "msg": "Erro ao listar encomendas.: [Descricao do Erro]"
+         }
+         ```
+       """
+    try:
+        listador = ListarVeiculos()
+        return jsonify(listador.todas()), 200
+    except Exception as e:
+        return jsonify({"msg": f"Erro ao listar veiculos.: {str(e)}"}), 500
 
 
 if __name__ == '__main__':

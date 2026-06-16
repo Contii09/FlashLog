@@ -74,6 +74,36 @@ class Entregador(Base):
         }
         return dados
 
+
+
+class Veiculo(Base):
+    __tablename__ = 'veiculos'
+    id = Column(Integer, primary_key=True)
+    modelo = Column(String(255), nullable=False)
+
+    def serialize(self):
+
+        dados = {
+            "id": self.id,
+            "modelo": self.modelo
+
+        }
+        return dados
+
+class BuscarVeiculo:
+    def por_id(self,id):
+
+        db: Session = SessionLocal()
+        try:
+            consulta = select(Veiculo).filter(Veiculo.id == id)
+            veiculo = db.scalar(consulta)
+            if veiculo:
+                return veiculo.serialize()
+            return None
+        finally:
+            db.close()
+
+
 class CentroDeTranporcacao(Base):
     __tablename__ = 'centro_de_transporcacoes'
     id = Column(Integer, primary_key=True)
@@ -215,6 +245,29 @@ class ListarEncomendas:
         finally:
             db.close()
 
+class ListarVeiculos:
+    def todas(self):
+        db: Session = SessionLocal()
+        try:
+            consulta = select(Veiculo)
+            veiculos = db.scalars(consulta).all()
+
+            return [veiculo.serialize() for veiculo in veiculos]
+        finally:
+            db.close()
+
+
+
+class ListarGalpoes:
+    def todas(self):
+        db: Session = SessionLocal()
+        try:
+            consulta = select(Galpao)
+            galpoes = db.scalars(consulta).all()
+
+            return [galpao.serialize() for galpao in galpoes]
+        finally:
+            db.close()
 
 
 class Movimentacao(Base):
