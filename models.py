@@ -256,6 +256,16 @@ class ListarVeiculos:
         finally:
             db.close()
 
+class ListarClientes:
+    def todas(self):
+        db: Session = SessionLocal()
+        try:
+            consulta = select(Cliente)
+            clientes = db.scalars(consulta).all()
+
+            return [cliente.serialize() for cliente in clientes]
+        finally:
+            db.close()
 
 
 class ListarGalpoes:
