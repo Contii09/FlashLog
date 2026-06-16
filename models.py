@@ -280,6 +280,18 @@ class ListarGalpoes:
             db.close()
 
 
+class ListarMovimentacoes:
+    def todas(self):
+        db: Session = SessionLocal()
+        try:
+            consulta = select(Movimentacao)
+            movimentacoes = db.scalars(consulta).all()
+
+            return [movimentacao.serialize() for movimentacao in movimentacoes]
+        finally:
+            db.close()
+
+
 class Movimentacao(Base):
     __tablename__ = 'movimentacoes'
     id = Column(Integer, primary_key=True)

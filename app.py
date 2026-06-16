@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from main import app
 from models import Usuario, Encomenda, Entregador, CentroDeTranporcacao, Cliente, SessionLocal, ListarEncomendas, \
     BuscarEncomenda, Movimentacao, BuscarCentroDeTransporte, BuscarCliente, BuscarEntregador, BuscarUsuario, Galpao, \
-    BuscarGalpoes, ListarGalpoes, Veiculo, BuscarVeiculo, ListarVeiculos, ListarClientes
+    BuscarGalpoes, ListarGalpoes, Veiculo, BuscarVeiculo, ListarVeiculos, ListarClientes, ListarMovimentacoes
 
 
 @app.route('/cadastro_encomendas', methods=['POST'])
@@ -1823,6 +1823,42 @@ def listar_clientes():
         return jsonify(listador.todas()), 200
     except Exception as e:
         return jsonify({"msg": f"Erro ao listar clientes.: {str(e)}"}), 500
+
+
+
+@app.route('/listar_movimentacoes', methods=['GET'])
+def listar_movimentacoes():
+    """
+       **API para Listagem de Veiculos**
+
+       ### Endpoint:
+       GET /listar_veiculos
+
+       ### Respostas (JSON):
+       * **200 OK:** Lista de veiculos retornada com sucesso.
+         ```json
+         [
+             {
+                 "id": 1,
+                 "modelo": "Smartphone",
+
+             }
+         ]
+         ```
+       * **500 Internal Server Error:** Falha operacional no banco de dados.
+         ```json
+         {
+             "msg": "Erro ao listar veiculos.: [Descricao do Erro]"
+         }
+         ```
+       """
+    try:
+        listador = ListarMovimentacoes()
+        return jsonify(listador.todas()), 200
+    except Exception as e:
+        return jsonify({"msg": f"Erro ao listar movimentacoes.: {str(e)}"}), 500
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001, host="0.0.0.0")
