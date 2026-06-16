@@ -39,7 +39,7 @@ def cadastro_encomendas():
         * **400 Bad Request:** Ausencia de campos obrigatorios.
           ```json
           {
-              "msg": "Os campos nome, fragilidade e tipo sao obrigatorios"
+              "msg": "Os campos nome, fragilidade, tipo e remetente sao obrigatorios"
           }
           ```
         * **500 Internal Server Error:** Falha operacional no banco de dados.
@@ -298,7 +298,7 @@ def cadastro_entregador():
 @app.route('/cadastro_centro_transporte', methods=['POST'])
 def cadastro_centro_transporte():
     """
-    **API para Cadastro do centro de transporte
+    **API para Cadastro do Centro de Transporte
 
     ### Endpoint:
     POST /cadastro_centro_transporte
@@ -364,10 +364,9 @@ def cadastro_movimentacao():
     ```json
     {
         "situacao": "string (obrigatorio) - Ex: Em transito, Entregue, Aguardando",
-        "localizacao": "string (obrigatorio) - Cidade, filial ou coordenadas atuais",
         "codigo_rastreio": "string (obrigatorio) - Codigo unico de rastreio da encomenda",
         "usuario_id": "integer (obrigatorio) - ID do usuario que registrou",
-        "entregador_id": "integer (opcional) - ID do entregador responsavel"
+        "galpao_id": "integer (opcional) - ID do galpao"
     }
     ```
     ### Respostas (JSON):
@@ -381,7 +380,7 @@ def cadastro_movimentacao():
     * **400 Bad Request:** Ausencia de campos obrigatorios.
       ```json
       {
-          "msg": "Os campos situacao, localizacao, codigo_rastreio e usuario_id sao obrigatorios"
+          "msg": "Os campos situacao, codigo_rastreio, usuario_id e galpao_id sao obrigatorios"
       }
       ```
     * **404 Not Found:** Codigo de rastreio nao cadastrado no sistema.
@@ -481,7 +480,7 @@ def cadastro_galpao():
         * **400 Bad Request:** Ausencia de campos obrigatorios.
           ```json
           {
-              "msg": "Os campos nome e localizacao sao obrigatorios"
+              "msg": "Os campos nome, capacidade e localizacao sao obrigatorios"
           }
           ```
         * **500 Internal Server Error:** Falha operacional no banco de dados.
@@ -560,6 +559,7 @@ def listar_encomendas():
                  "fragilidade": "Alta",
                  "tipo": "Eletronicos",
                  "criado_em": "Mon, 18 May 2026 15:42:00 GMT"
+                 "remetente": "aasd"
              }
          ]
          ```
@@ -693,30 +693,31 @@ def buscar_centro_transporte(centro_id):
 @app.route('/buscar_galpao/<int:galpoes_id>', methods=['GET'])
 def buscar_galpoes(galpoes_id):
     """
-    **API para Busca de Centro de Transporte por ID**
+    **API para Busca de Galpao por ID**
 
     ### Endpoint:
-    GET /buscar_centro_transporte/<int:centro_id>
+    GET /buscar_galpao/<int:centro_id>
 
     ### Respostas (JSON):
-    * **200 OK:** Centro de transporte encontrado com sucesso.
+    * **200 OK:** Galpao encontrado com sucesso.
       ```json
       {
           "id": 1,
           "nome": "qqqq",
-          "localizacao": "São Paulo"
+          "localizacao": "São Paulo",
+          "capacidade": "100.000 encomendas"
       }
       ```
-    * **404 Not Found:** Centro de transporte não encontrado.
+    * **404 Not Found:** Galpao não encontrado.
       ```json
       {
-          "msg": "Centro de transporte não encontrado"
+          "msg": "Galpao não encontrado"
       }
       ```
     * **500 Internal Server Error:** Falha operacional no banco de dados.
       ```json
       {
-          "msg": "Erro ao buscar centro de transporte.: [Descrição do Erro]"
+          "msg": "Erro ao buscar galpao.: [Descrição do Erro]"
       }
       ```
     """
@@ -1441,7 +1442,7 @@ def editar_centro_transporte(var_id):
 @app.route('/editar_galpao/<var_id>', methods=['PUT'])
 def editar_galpao(var_id):
     """
-    **API para Edição de Centro de Transporte**
+    **API para Edição de Galpão**
     ### Endpoint:
     PUT /editar_centro_transporte/<var_id>
 
@@ -1450,6 +1451,7 @@ def editar_galpao(var_id):
     {
         "nome": "string (opcional) - Novo nome ou descricao do centro de transporte",
         "localizacao": "boolean/string (opcional) - Novo indicador de localizacao da transportadora"
+        "capacidade": "string (opcional) - Novo indicador do galpao da transportadora"
     }
     ```
 
@@ -1462,6 +1464,7 @@ def editar_galpao(var_id):
               "id": 1,
               "nome": "Nome Atualizado",
               "localizacao": "São Paulo - SP"
+              "capacidade": "100.00 encomendas"
           }
       }
       ```
@@ -1569,11 +1572,10 @@ def listar_galpoes():
 
 
 
-
 @app.route('/cadastro_veiculos', methods=['POST'])
 def cadastro_veiculos():
     """
-      **API para Cadastro de Entregador**
+      **API para Cadastro de Veiculos**
 
       ### Endpoint:
       POST /cadastro_entregador
@@ -1581,9 +1583,7 @@ def cadastro_veiculos():
       ### ParAmetros de Entrada (JSON):
       ```json
       {
-          "nome": "string (obrigatorio) - Nome ou descricao da encomenda",
-          "veiculo": "boolean/string (obrigatOrio) - Indicador o veiculo do entregador",
-
+          "model": "string (obrigatorio) - Nome ou descricao da encomenda",
       }
       ```
 
@@ -1598,13 +1598,13 @@ def cadastro_veiculos():
       * **400 Bad Request:** Ausencia de campos obrigatorios.
         ```json
         {
-            "msg": "Os campos Nome e veiculo sao obrigatorios"
+            "msg": "O campo modelo é obrigatorio"
         }
         ```
       * **500 Internal Server Error:** Falha operacional no banco de dados.
         ```json
         {
-            "msg": "Erro ao registrar usuario.: [Descricao do Erro]"
+            "msg": "Erro ao registrar veiculo.: [Descricao do Erro]"
         }
         ```
       """
@@ -1631,29 +1631,28 @@ def cadastro_veiculos():
 @app.route("/buscar_veiculo/<int:veiculo_id>", methods=['GET'])
 def buscar_veiculo(veiculo_id):
     """
-       **API para Busca de Entregador por ID**
+       **API para Busca de Veiculo por ID**
 
        ### Endpoint:
-       GET /buscar_entregador/<int:entregador_id>
+       GET /buscar_veiculo/<int:veiculo_id>
 
        ### Respostas (JSON):
-       * **200 OK:** Cliente encontrado com sucesso.
+       * **200 OK:** Veiculo encontrado com sucesso.
          ```json
          {
-            "nome": "sm",
-            "veiculo": "sm"
+            "modelo": "sm",
          }
          ```
-       * **404 Not Found:** Entregador não encontrado.
+       * **404 Not Found:** veiculo não encontrado.
          ```json
          {
-             "msg": "Entregador não encontrado"
+             "msg": "veiculo não encontrado"
          }
          ```
        * **500 Internal Server Error:** Falha operacional no banco de dados.
          ```json
          {
-             "msg": "Erro ao buscar entregador.: [Descrição do Erro]"
+             "msg": "Erro ao buscar veiculo.: [Descrição do Erro]"
          }
          ```
        """
@@ -1672,31 +1671,29 @@ def buscar_veiculo(veiculo_id):
 
 
 
-
 @app.route('/editar_veiculo/<var_id>', methods=['PUT'])
 def editar_veiculo(var_id):
     """
-    **API para Edição de Entregador**
+    **API para Edição de veiculo**
     ### Endpoint:
-    PUT /editar_entregador/<var_id>
+    PUT /editar_veiculo/<var_id>
 
     ### Parâmetros de Entrada (JSON):
     ```json
     {
-        "nome": "string (opcional) - Novo nome do entregador",
-        "veiculo": "boolean/string (opcional) - Novo indicador de veículo do entregador"
+        "modelo": "string (opcional) - Novo modelo ",
     }
     ```
 
     ### Respostas (JSON):
-    * **200 OK:** Entregador atualizado com sucesso.
+    * **200 OK:** veiculo atualizado com sucesso.
       ```json
       {
-          "msg": "Entregador atualizado com sucesso",
-          "entregador": {
+          "msg": "veiculo atualizado com sucesso",
+          "veiculo": {
               "id": 1,
-              "nome": "Nome Atualizado",
-              "veiculo": "Moto"
+              "modelo": "Nome Atualizado"
+
           }
       }
       ```
@@ -1706,16 +1703,16 @@ def editar_veiculo(var_id):
           "msg": "Requisicao precisa conter dados em JSON"
       }
       ```
-    * **404 Not Found:** Entregador não encontrado no banco de dados.
+    * **404 Not Found:** veiculo não encontrado no banco de dados.
       ```json
       {
-          "msg": "Entregador nao encontrado"
+          "msg": "veiculo nao encontrado"
       }
       ```
     * **500 Internal Server Error:** Falha operacional no banco de dados.
       ```json
       {
-          "msg": "Erro ao atualizar entregador: [Descricao do Erro]"
+          "msg": "Erro ao atualizar veiculo: [Descricao do Erro]"
       }
       ```
     """
@@ -1763,29 +1760,26 @@ def editar_veiculo(var_id):
 @app.route('/listar_veiculos', methods=['GET'])
 def listar_veiculos():
     """
-       **API para Listagem de Encomendas**
+       **API para Listagem de Veiculos**
 
        ### Endpoint:
-       GET /listar_encomendas
+       GET /listar_veiculos
 
        ### Respostas (JSON):
-       * **200 OK:** Lista de encomendas retornada com sucesso.
+       * **200 OK:** Lista de veiculos retornada com sucesso.
          ```json
          [
              {
                  "id": 1,
-                 "codigo_rastreio": "FLASH987654",
-                 "nome": "Smartphone",
-                 "fragilidade": "Alta",
-                 "tipo": "Eletronicos",
-                 "criado_em": "Mon, 18 May 2026 15:42:00 GMT"
+                 "modelo": "Smartphone",
+
              }
          ]
          ```
        * **500 Internal Server Error:** Falha operacional no banco de dados.
          ```json
          {
-             "msg": "Erro ao listar encomendas.: [Descricao do Erro]"
+             "msg": "Erro ao listar veiculos.: [Descricao do Erro]"
          }
          ```
        """
@@ -1799,29 +1793,28 @@ def listar_veiculos():
 @app.route('/listar_clientes', methods=['GET'])
 def listar_clientes():
     """
-       **API para Listagem de Galpoes**
+       **API para Listagem de Clientes**
 
        ### Endpoint:
-       GET /listar_encomendas
+       GET /listar_clientes
 
        ### Respostas (JSON):
-       * **200 OK:** Lista de encomendas retornada com sucesso.
+       * **200 OK:** Lista de clientes retornada com sucesso.
          ```json
          [
              {
                  "id": 1,
-                 "codigo_rastreio": "FLASH987654",
-                 "nome": "Smartphone",
-                 "fragilidade": "Alta",
-                 "tipo": "Eletronicos",
-                 "criado_em": "Mon, 18 May 2026 15:42:00 GMT"
+                 "email": "livia@gmail",
+                 "nome": "livia",
+                 "senha": "123",
+                 "endereço": "rua brasil",
              }
          ]
          ```
        * **500 Internal Server Error:** Falha operacional no banco de dados.
          ```json
          {
-             "msg": "Erro ao listar encomendas.: [Descricao do Erro]"
+             "msg": "Erro ao listar clientes.: [Descricao do Erro]"
          }
          ```
        """
